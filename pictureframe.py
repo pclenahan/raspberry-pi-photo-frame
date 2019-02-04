@@ -78,14 +78,14 @@ def correct_orientation(image):
 
     return image
 
-def scale_image(display_width, display_height, image):
+def scale_image(image, t_width, t_height):
     """
     Scale pygame image up/down to fit display size.
 
     Arguments:
-    display_height -- Vertical screen size (in whole pixels)
-    display_width -- Horizontal screen size (in whole pixels)
-    image -- The pygame image object
+    image -- The pygame image object to be scaled
+    t_width -- Target horizontal size (in whole pixels)
+    t_height -- Target vertical size (in whole pixels)
     """
 
     original_width = image.get_width()
@@ -96,8 +96,8 @@ def scale_image(display_width, display_height, image):
 
     # Find ratios of image to screen
 
-    width_ratio = display_width / original_width
-    height_ratio = display_height / original_height
+    width_ratio = t_width / original_width
+    height_ratio = t_height / original_height
 
     if (height_ratio <= width_ratio):
         # Height is the constraining dimension, so scale up/down based on that
@@ -115,6 +115,42 @@ def scale_image(display_width, display_height, image):
 
     return image
 
+def fade(screen, image, fade_mode, display_width, display_height):
+    """
+    Fade image in/out of display.
+
+    Arguments:
+    screen -- pygame Surface for the display
+    image -- pygame image Surface to be faded
+    fade_mode -- "In" or "Out"
+    display_width -- Horizontal size (in whole pixels) of display
+    display_height -- Vertical size (in whole pixels) of display
+    """
+
+    if fade_mode == "In":
+        start = 0
+        stop = 255
+        rate = 25
+    else:
+        start = 255
+        stop = 0
+        rate = -25
+
+    x_pos = (display_width - image.get_width() ) // 2
+    y_pos = (display_height - image.get_height() ) // 2
+
+    for fade in range(start, stop, rate):
+        image.set_alpha(fade)
+        screen.fill((0,0,0))
+        screen.blit(image, (x_pos, y_pos) )
+        pygame.display.flip()
+    else:
+        # Final update - make sure we are max or min fade
+        image.set_alpha(stop)
+        screen.fill((0,0,0))
+        screen.blit(image, (x_pos, y_pos) )
+        pygame.display.flip()
+
 def cleanup_and_exit():
     """
     Reset pygame display so screen works correctly and exit
@@ -123,14 +159,15 @@ def cleanup_and_exit():
     pygame.quit()
     sys.exit(1)
 
-def main(top_path, frame_mode, display_time):
+def main(top_path, frame_mode, display_time, screen_mode):
     """
     Main picture frame loop that does the real work.
 
     Arguments:
     top_path -- Top directory structure to look for images in
     frame_mode -- "Landscape", "Portrait", "All" determines what images to show
-    display_time -- How many seconds to display each image 
+    display_time -- How many seconds to display each image
+    screen_mode -- "Full" for fullscreen, "Half" for 50% screen
     """
     
     print("----- Setting things up -----")
@@ -145,10 +182,16 @@ def main(top_path, frame_mode, display_time):
     pygame.init()
 
     display_info = pygame.display.Info()
-    display_width = display_info.current_w
-    display_height = display_info.current_h
 
-    pygame.display.set_mode((display_width,display_height), pygame.FULLSCREEN)
+    if screen_mode == "Full":
+        display_width = display_info.current_w
+        display_height = display_info.current_h
+        pygame.display.set_mode((display_width, display_height),
+                                pygame.FULLSCREEN)
+    else:
+        display_width = display_info.current_w // 2
+        display_height = display_info.current_h // 2
+        pygame.display.set_mode((display_width, display_height))
 
     pygame.display.set_caption("Picture Frame")
     pygame.mouse.set_visible(False)
@@ -159,7 +202,7 @@ def main(top_path, frame_mode, display_time):
     print("    Width : ", display_width)
     print("    Height: ", display_height)
 
-    # Done setting up the display screen, now we go into main image loop
+    # Done setting up the display screen, now we go into main display loop
 
     keep_looping = True
     n = 0
@@ -178,6 +221,7 @@ def main(top_path, frame_mode, display_time):
             cleanup_and_exit()
 
         image = pygame.image.load(image_file)
+        image = image.convert()  # Make image suitable for alpha fade
 
         image = correct_orientation(image)
 
@@ -189,11 +233,18 @@ def main(top_path, frame_mode, display_time):
         print("    Image is: ", image_type)
 
         if (frame_mode == "All") or (image_type == frame_mode):
-            image = scale_image(display_width, display_height, image)
-            screen.fill((0,0,0))
-            screen.blit(image, ((display_width - image.get_width() )/2,
-                                (display_height-image.get_height())/2))
-            pygame.display.flip()
+            
+            image = scale_image(image, display_width, display_height)
+
+            # Fade out previous image
+
+            prev = screen.copy()
+            fade(screen, prev, "Out", display_width, display_height)
+            
+            # Fade in new image
+
+            fade(screen, image, "In", display_width, display_height)
+
             time.sleep(display_time)
         else:
             print("    Image skipped since we are in ", frame_mode, " mode")
@@ -239,24 +290,33 @@ if __name__ == "__main__":
         nargs="?",
         default="All",
         type=str,
-        help="Mode that determines what image types to display: Landscape, Portrait or All",
+        help="What image types to display: Landscape, Portrait or All",
         dest="frame_mode"
     )
     parser.add_argument(
         "-t",
         nargs="?",
-        default=2,
+        default=10,
         type=int,
-        help="Amount of time (in seconds) to display each image.",
+        help="Time (in seconds) to display each image.",
         dest="display_time"
+    )
+    parser.add_argument(
+        "-s",
+        nargs="?",
+        default="Full",
+        type=str,
+        help="Screen mode to run in (Full = Fullscreen, Half = 50%)",
+        dest="screen_mode"
     )
 
     args = parser.parse_args()
     
     print("----- Welcome to Picture Frame -----")
     print("Input arguments are:")
-    print("    Path: ", args.top_path)
-    print("    Mode: ", args.frame_mode)
-    print("    Time: ", args.display_time)
+    print("    Path:   ", args.top_path)
+    print("    Mode:   ", args.frame_mode)
+    print("    Time:   ", args.display_time)
+    print("    Screen: ", args.screen_mode)
 
-    main(args.top_path, args.frame_mode, args.display_time)
+    main(args.top_path, args.frame_mode, args.display_time, args.screen_mode)
