@@ -1,9 +1,4 @@
 #!/usr/bin/env python
-#FlipFrame Python Slideshow Code
-#Written By Tim Giles, 10/10/16
-#www.wildcircuits.com
-#www.hackaday.io/wildcircuits
-#based on code by Brad Montgomery, https://github.com/bradmontgomery/pgSlideShow
 
 import argparse
 import os
