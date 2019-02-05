@@ -26,26 +26,32 @@ def get_image_file(top):
     read the whole directory structure (which has an unknown number of files)
     into memory. Since the structure is read each time, also supports files
     being added to the structure while the program is running.
+
+    Function assumes that directory was copied from a Mac system and ignores
+    the various hidden system files that Mac OSX places in the tree. 
     """
 
     random.seed()
 
     n=0
-    full_name = "None"
+    fullname = "None"
+    extensions = [".JPG",".jpg", ".PNG", ".png"]
 
     for root, dirs, files in os.walk(top):
         for name in files:
             current_name = os.path.join(root, name)
-            file_name, file_ext = os.path.splitext(current_name)
-            # We only care about images, so don't count other files
-            if file_ext in (".JPG",".jpg", ".PNG", ".png"):
+            filename, fileext = os.path.splitext(current_name)
+            # Only consider images and ignore Apple hidden files
+            if fileext in extensions and not ".AppleDouble" in root \
+                    and not filename.startswith("."):
                 n=n+1
                 if random.uniform(0, n) < 1:
-                    full_name = current_name
+                    fullname = current_name
 
-    print("    Image file: ", full_name)
+    print("    Randomly Selected Image file:")
+    print("     ", fullname)
 
-    return full_name
+    return fullname
 
 def correct_orientation(image):
     """
@@ -220,7 +226,14 @@ def main(top_path, frame_mode, display_time, screen_mode):
             print("Could not find any images to display. Exiting.")
             cleanup_and_exit()
 
-        image = pygame.image.load(image_file)
+        try:
+            image = pygame.image.load(image_file)
+        except pygame.error as message:
+            print("Cannot load image: ", image_file)
+            print("Message from pygame was: ", message)
+            print("Exiting")
+            cleanup_and_exit()
+            
         image = image.convert()  # Make image suitable for alpha fade
 
         image = correct_orientation(image)
