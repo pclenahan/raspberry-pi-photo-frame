@@ -121,41 +121,94 @@ def scale_image(image, t_width, t_height):
 
     return image
 
-def fade(screen, image, fade_mode, display_width, display_height):
+def fade_black(screen, image, display_width, display_height):
     """
-    Fade image in/out of display.
+    Fade current screen out to black and then fade new image in.
 
     Arguments:
     screen -- pygame Surface for the display
     image -- pygame image Surface to be faded
-    fade_mode -- "In" or "Out"
     display_width -- Horizontal size (in whole pixels) of display
     display_height -- Vertical size (in whole pixels) of display
     """
 
-    if fade_mode == "In":
-        start = 0
-        stop = 255
-        rate = 25
-    else:
-        start = 255
-        stop = 0
-        rate = -25
+    black = (0,0,0)
+    fade_rate = 25
+    prev = screen.copy()
 
     x_pos = (display_width - image.get_width() ) // 2
     y_pos = (display_height - image.get_height() ) // 2
 
-    for fade in range(start, stop, rate):
+    x_prev = (display_width - prev.get_width() ) // 2
+    y_prev = (display_height - prev.get_height() ) // 2
+
+    # Fade out the prev image.
+    # Need to black fill screen between blits in order to erase more
+    # prominent image.
+
+    for fade in range(255, -1, -fade_rate):
+        prev.set_alpha(fade)
+        screen.fill(black)
+        screen.blit(prev, (x_prev, y_prev) )
+        pygame.display.flip()
+
+    screen.fill(black) # Final fill just in case rate did not leave us on 0 
+
+    # Fade in new image.
+    # We don't need the black fill at each step since we are making
+    # the image more prominent in each loop.
+
+    for fade in range(0, 256, fade_rate):
         image.set_alpha(fade)
-        screen.fill((0,0,0))
         screen.blit(image, (x_pos, y_pos) )
         pygame.display.flip()
-    else:
-        # Final update - make sure we are max or min fade
-        image.set_alpha(stop)
-        screen.fill((0,0,0))
-        screen.blit(image, (x_pos, y_pos) )
+
+    # Final update - make sure we are max alpha for case where rate step
+    # did not end us on 255.
+    
+    image.set_alpha(255)
+    screen.blit(image, (x_pos, y_pos) )
+    pygame.display.flip()
+
+
+def fade_merge(screen, image, display_width, display_height):
+    """
+    Fade image in over existing screen image.
+
+    Arguments:
+    screen -- pygame Surface for the display
+    image -- pygame image Surface to be faded in
+    display_width -- Horizontal size (in whole pixels) of display
+    display_height -- Vertical size (in whole pixels) of display
+    """
+
+    black = (0,0,0)
+    fade_rate = 10
+
+    x_pos = (display_width - image.get_width() ) // 2
+    y_pos = (display_height - image.get_height() ) // 2
+
+    # Create a Surface the size of screen with image on black background and
+    # use this to fade in. This ensures that the new image being faded in
+    # overwrites all of any previous larger image.
+
+    new_screen = pygame.Surface((display_width, display_height))
+    new_screen.fill(black)
+    new_screen.blit(image, (x_pos, y_pos))
+
+    # Fade new screen in over existing screen
+
+    for fade in range(0, 256, fade_rate):
+        new_screen.set_alpha(fade)
+        screen.blit(new_screen, (0, 0) )
         pygame.display.flip()
+
+    # Final update - make sure we are max alpha for case where rate step
+    # did not end us on 255.
+    
+    new_screen.set_alpha(255)
+    screen.blit(new_screen, (0, 0) )
+    pygame.display.flip()
 
 def cleanup_and_exit():
     """
@@ -165,7 +218,7 @@ def cleanup_and_exit():
     pygame.quit()
     sys.exit(1)
 
-def main(top_path, frame_mode, display_time, screen_mode):
+def main(top_path, frame_mode, display_time, fade_mode, screen_mode):
     """
     Main picture frame loop that does the real work.
 
@@ -173,6 +226,7 @@ def main(top_path, frame_mode, display_time, screen_mode):
     top_path -- Top directory structure to look for images in
     frame_mode -- "Landscape", "Portrait", "All" determines what images to show
     display_time -- How many seconds to display each image
+    fade_mode -- "Merge" fade or "Black" to fade via black screen
     screen_mode -- "Full" for fullscreen, "Half" for 50% screen
     """
     
@@ -249,14 +303,10 @@ def main(top_path, frame_mode, display_time, screen_mode):
             
             image = scale_image(image, display_width, display_height)
 
-            # Fade out previous image
-
-            prev = screen.copy()
-            fade(screen, prev, "Out", display_width, display_height)
-            
-            # Fade in new image
-
-            fade(screen, image, "In", display_width, display_height)
+            if fade_mode == "Merge":
+                fade_merge(screen, image, display_width, display_height)
+            else:                
+                fade_black(screen, image, display_width, display_height)
 
             time.sleep(display_time)
         else:
@@ -272,7 +322,11 @@ def main(top_path, frame_mode, display_time, screen_mode):
                     frame_mode = "Portrait"
                 elif event.key == pygame.K_a:
                     frame_mode = "All"
-                else:
+                elif event.key == pygame.K_m:
+                    fade_mode = "Merge"
+                elif event.key == pygame.K_b:
+                    fade_mode = "Black"
+                else: # Any other key is considered exit
                     keep_looping = False
                 break
   
@@ -309,10 +363,18 @@ if __name__ == "__main__":
     parser.add_argument(
         "-t",
         nargs="?",
-        default=10,
+        default=15,
         type=int,
         help="Time (in seconds) to display each image.",
         dest="display_time"
+    )
+    parser.add_argument(
+        "-f",
+        nargs="?",
+        default="Merge",
+        type=str,
+        help="Fade mode to run in (Merge or Black)",
+        dest="fade_mode"
     )
     parser.add_argument(
         "-s",
@@ -330,6 +392,8 @@ if __name__ == "__main__":
     print("    Path:   ", args.top_path)
     print("    Mode:   ", args.frame_mode)
     print("    Time:   ", args.display_time)
+    print("    Fade:   ", args.fade_mode)
     print("    Screen: ", args.screen_mode)
 
-    main(args.top_path, args.frame_mode, args.display_time, args.screen_mode)
+    main(args.top_path, args.frame_mode, args.display_time,
+         args.fade_mode, args.screen_mode)
