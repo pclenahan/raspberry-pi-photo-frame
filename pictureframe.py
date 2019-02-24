@@ -27,7 +27,7 @@ def get_image_file(top):
     into memory. Since the structure is read each time, also supports files
     being added to the structure while the program is running.
 
-    Function assumes that directory was copied from a Mac system and ignores
+    Function allows for directories copied from a Mac system and ignores
     the various hidden system files that Mac OSX places in the tree. 
     """
 
@@ -38,15 +38,14 @@ def get_image_file(top):
     extensions = [".JPG",".jpg", ".PNG", ".png"]
 
     for root, dirs, files in os.walk(top):
-        for name in files:
-            current_name = os.path.join(root, name)
-            filename, fileext = os.path.splitext(current_name)
+        for filename in files:
+            filebase, fileext = os.path.splitext(filename)
             # Only consider images and ignore Apple hidden files
             if fileext in extensions and not ".AppleDouble" in root \
                     and not filename.startswith("."):
                 n=n+1
                 if random.uniform(0, n) < 1:
-                    fullname = current_name
+                    fullname = os.path.join(root, filename)
 
     print("    Randomly Selected Image file:")
     print("     ", fullname)
@@ -347,7 +346,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-p",
         nargs="?",
-        default="/home/pi/Pictures",
+        default="/FramePictures",
         type=str,
         help="Path to top of a directory tree that contains images",
         dest="top_path"
@@ -363,7 +362,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-t",
         nargs="?",
-        default=15,
+        default=10,
         type=int,
         help="Time (in seconds) to display each image.",
         dest="display_time"
