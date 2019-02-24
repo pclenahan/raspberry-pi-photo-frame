@@ -364,7 +364,7 @@ if __name__ == "__main__":
         nargs="?",
         default=10,
         type=int,
-        help="Time (in seconds) to display each image.",
+        help="Time in seconds to display each image.",
         dest="display_time"
     )
     parser.add_argument(
@@ -372,7 +372,7 @@ if __name__ == "__main__":
         nargs="?",
         default="Merge",
         type=str,
-        help="Fade mode to run in (Merge or Black)",
+        help="Fade mode to run in: Merge or Black",
         dest="fade_mode"
     )
     parser.add_argument(
@@ -380,7 +380,7 @@ if __name__ == "__main__":
         nargs="?",
         default="Full",
         type=str,
-        help="Screen mode to run in (Full = Fullscreen, Half = 50%)",
+        help="Screen mode to run in: Full or Half",
         dest="screen_mode"
     )
 
