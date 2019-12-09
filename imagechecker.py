@@ -23,18 +23,18 @@ def scan_image_files(top):
     extensions = [".JPG",".jpg", ".PNG", ".png"]
 
     for root, dirs, files in os.walk(top):
-        for name in files:
-            current_name = os.path.join(root, name)
-            filename, fileext = os.path.splitext(current_name)
+        for filename in files:
+            filebase, fileext = os.path.splitext(filename)
             # Only consider images and ignore Apple hidden files
             if fileext in extensions and not ".AppleDouble" in root \
                     and not filename.startswith("."):
                 images_checked = images_checked +1
+                fullname = os.path.join(root, filename)
                 try:
-                    image = pygame.image.load(current_name)
+                    image = pygame.image.load(fullname)
                 except pygame.error as message:
                     bad_images_count = bad_images_count + 1
-                    print("Cannot load image: ", current_name)
+                    print("Cannot load image: ", fullname)
 
                 if (images_checked // 100) == (images_checked / 100):
                     # Periodically print status
@@ -86,7 +86,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-p",
         nargs="?",
-        default="/home/pi/Pictures",
+        default="/home/pi/FramePictures",
         type=str,
         help="Path to top of a directory tree that contains images",
         dest="top_path"
@@ -95,7 +95,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     
-    print("----- Welcome to Imaghe Checker Utility -----")
+    print("----- Welcome to Image Checker Utility -----")
     print("Input arguments are:")
     print("    Path:   ", args.top_path)
 

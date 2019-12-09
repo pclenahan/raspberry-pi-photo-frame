@@ -346,7 +346,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-p",
         nargs="?",
-        default="/FramePictures",
+        default="/home/pi/FramePictures",
         type=str,
         help="Path to top of a directory tree that contains images",
         dest="top_path"
